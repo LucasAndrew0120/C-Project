@@ -1,0 +1,10 @@
+---
+Language: Cpp
+BasedOnStyle: LLVM
+# 核心：大括号另起一行
+BreakBeforeBraces: Allman
+# 缩进设置为4个空格
+IndentWidth: 4
+# 连续赋值对齐（可选，会让代码更美观）
+AlignConsecutiveAssignments: true
+---
