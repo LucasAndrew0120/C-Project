@@ -30,166 +30,181 @@ const char *english_names[] = {
     "Kimberly", "Nicole", "Christine", "Katherine", "Samantha", "Elizabeth",
     "Heather", "Tiffany", "Amy", "Angela"};
 
-// 时间段
-const char *time_slots[] = {"08:00", "10:00", "12:00", "14:00",
-                            "16:00", "18:00", "20:00"};
-const int num_time_slots = 8;
+// 时间段（6个时段，08:00-20:00）
+const char *time_slots[] = {"08:00", "10:00", "12:00", "14:00", "16:00", "18:00"};
+const int num_time_slots = 6;  // 修改为6个时段
+#define TOTAL_SEATS 50  // 50个机位
+
+// 从时间段字符串提取小时（如"08:00" -> 8）
+int extract_hour_from_time(const char* time_str) {
+    int hour;
+    if (sscanf(time_str, "%d:", &hour) == 1) {
+        return hour;
+    }
+    return -1;
+}
+
+// 获取时间段索引 (08:00=0, 10:00=1, 12:00=2, 14:00=3, 16:00=4, 18:00=5)
+int get_time_slot_index(int hour) { 
+    return (hour - 8) / 2; 
+}
 
 // 生成随机姓名（考虑性别）
-void generate_random_name(char *name, int gender)
-{
-    if (rand() % 2 == 0)
-    { // 50%中文名
-        if (gender == 1)
-        {                                // 男性
-            int index = 0 + rand() % 30; // 前30个是男性中文名
+void generate_random_name(char *name, int gender) {
+    if (rand() % 2 == 0) {  // 50%中文名
+        if (gender == 1) {  // 男性
+            int index = 0 + rand() % 30;
+            strcpy(name, chinese_names[index]);
+        } else {  // 女性
+            int index = 30 + rand() % 30;
             strcpy(name, chinese_names[index]);
         }
-        else
-        {                                 // 女性
-            int index = 30 + rand() % 30; // 后30个是女性中文名
-            strcpy(name, chinese_names[index]);
-        }
-    }
-    else
-    { // 50%英文名
-        if (gender == 1)
-        {                                // 男性
-            int index = 0 + rand() % 24; // 前24个是男性英文名
+    } else {  // 50%英文名
+        if (gender == 1) {  // 男性
+            int index = 0 + rand() % 24;
             strcpy(name, english_names[index]);
-        }
-        else
-        {                                 // 女性
-            int index = 24 + rand() % 24; // 后24个是女性英文名
+        } else {  // 女性
+            int index = 24 + rand() % 24;
             strcpy(name, english_names[index]);
         }
     }
 }
 
 // 生成随机电话号码
-void generate_random_phone(char *phone)
-{
-    // 中国手机号格式：1[3-9]XXXXXXXXX
+void generate_random_phone(char *phone) {
     phone[0] = '1';
-
     const char second_digits[] = "3456789";
-    phone[1]                   = second_digits[rand() % 7];
-
-    for (int i = 2; i < 11; i++)
-    {
+    phone[1] = second_digits[rand() % 7];
+    for (int i = 2; i < 11; i++) {
         phone[i] = '0' + rand() % 10;
     }
     phone[11] = '\0';
 }
 
-// 生成一天的数据
-int generate_daily_data(FILE *file, int year, int month, int day)
-{
+// 生成一天的数据（按照预约系统的格式）
+int generate_daily_data(FILE *file, int year, int month, int day) {
+    // 初始化一天的记录 - 修复：使用显式循环初始化
+    int daily_occupancy[TOTAL_SEATS][num_time_slots];
+    char daily_names[TOTAL_SEATS][num_time_slots][20];
+    int daily_genders[TOTAL_SEATS][num_time_slots];
+    char daily_phones[TOTAL_SEATS][num_time_slots][12];
+    
+    // 使用循环初始化数组
+    for (int seat = 0; seat < TOTAL_SEATS; seat++) {
+        for (int time_idx = 0; time_idx < num_time_slots; time_idx++) {
+            daily_occupancy[seat][time_idx] = 0;
+            daily_genders[seat][time_idx] = 0;
+            strcpy(daily_names[seat][time_idx], "");
+            strcpy(daily_phones[seat][time_idx], "");
+        }
+    }
+    
     int total_records_today = 0;
 
-    // 使用集合来跟踪已使用的机位，避免重复（在实际机房中，同一时间同一机位不能有多个记录）
-    int used_seats[8][51] = {0}; // 8个时段 × 51个机位（1-50）
-
-    // 为每个时段生成随机数量的记录（0-50条，但不超过可用机位数）
-    for (int time_idx = 0; time_idx < num_time_slots; time_idx++)
-    {
-        // 每个时段随机生成5-35条记录（保证一定数据量，但不超过机位数）
-        int records_this_slot = 5 + rand() % 31; // 5-35条
-
-        // 记录生成的记录数，用于统计
-        int actual_records = 0;
-
-        for (int i = 0; i < records_this_slot; i++)
-        {
+    // 为每个时段生成随机数量的记录
+    for (int time_idx = 0; time_idx < num_time_slots; time_idx++) {
+        // 每个时段随机生成10-30条记录
+        int records_this_slot = 10 + rand() % 21;
+        
+        for (int i = 0; i < records_this_slot && i < TOTAL_SEATS; i++) {
             // 随机选择一个机位（1-50）
-            int seat = 1 + rand() % 50;
-
+            int seat = rand() % TOTAL_SEATS;  // 0-49
+            
             // 检查该机位在该时段是否已被使用
-            if (used_seats[time_idx][seat])
-            {
-                continue; // 如果已被使用，跳过
+            if (daily_occupancy[seat][time_idx] == 1) {
+                // 如果已被使用，找下一个空闲机位
+                for (int s = 0; s < TOTAL_SEATS; s++) {
+                    if (daily_occupancy[s][time_idx] == 0) {
+                        seat = s;
+                        break;
+                    }
+                }
+                if (daily_occupancy[seat][time_idx] == 1) continue; // 没有空闲机位
             }
-
-            // 标记该机位为已使用
-            used_seats[time_idx][seat] = 1;
-
+            
+            // 标记为已使用
+            daily_occupancy[seat][time_idx] = 1;
+            
             // 生成人员信息
-            char name[50];
-            char phone[12];
             int gender = rand() % 2;
-
-            generate_random_name(name, gender);
-            generate_random_phone(phone);
-
-            // 机位状态：如果有人使用，状态为1（占用）
-            int seat_status = 1;
-
-            // 写入数据
-            fprintf(file, "%04d,%02d,%02d,%s,%s,%d,%s,%d,%d\n", year, month,
-                    day, time_slots[time_idx], name, gender, phone, seat,
-                    seat_status);
-
-            actual_records++;
+            generate_random_name(daily_names[seat][time_idx], gender);
+            generate_random_phone(daily_phones[seat][time_idx]);
+            daily_genders[seat][time_idx] = gender;
+            
             total_records_today++;
         }
-
-        // 如果需要，可以为空闲机位添加记录（状态为0）
-        // 这里我们只添加占用机位的记录，空闲机位不单独记录
     }
-
+    
+    // 写入这一天数据（按照预约系统的格式）
+    // 先写入年月日
+    fprintf(file, "%d %d %d\n", year, month, day);
+    
+    // 写入每个机位每个时段的数据
+    for (int seat = 0; seat < TOTAL_SEATS; seat++) {
+        for (int time_idx = 0; time_idx < num_time_slots; time_idx++) {
+            fprintf(file, "%d", daily_occupancy[seat][time_idx]);
+            
+            if (daily_occupancy[seat][time_idx] == 1) {
+                fprintf(file, " %s %d %s", 
+                        daily_names[seat][time_idx],
+                        daily_genders[seat][time_idx],
+                        daily_phones[seat][time_idx]);
+            } else {
+                fprintf(file, " None 0 None");
+            }
+            
+            if (time_idx < num_time_slots - 1) {
+                fprintf(file, " ");
+            }
+        }
+        fprintf(file, "\n");
+    }
+    
     return total_records_today;
 }
 
-int main()
-{
+int main() {
     srand(time(NULL));
-
-    FILE *file = fopen("机房监控数据.csv", "w");
-    if (file == NULL)
-    {
+    
+    // 修改文件名
+    FILE *file = fopen("computer_room_data.txt", "w");
+    if (file == NULL) {
         printf("无法创建文件！\n");
         return 1;
     }
-
-    // 写入CSV表头
-    fprintf(file, "年,月,日,时间,姓名,性别,电话,机位,状态\n");
-
-    // 生成多天数据（例如：2024年1月）
-    int start_year  = 2026;
+    
+    // 生成多天数据
+    int start_year = 2026;
     int start_month = 1;
-    int start_day   = 1;
-    int num_days    = 100; // 生成7天数据（一周）
-
+    int start_day = 1;
+    int num_days = 30;  // 生成30天数据
+    
+    // 先写入天数
+    fprintf(file, "%d\n", num_days);
+    
     int total_records = 0;
-
+    
     printf("正在生成机房监控数据...\n");
     printf("机房配置：固定50个机位\n");
-    printf("监控时段：08:00-20:00，每2小时一次\n\n");
-
-    for (int day = start_day; day < start_day + num_days; day++)
-    {
-        int daily_records =
-            generate_daily_data(file, start_year, start_month, day);
+    printf("监控时段：08:00-20:00，每2小时一次\n");
+    printf("输出格式：TXT文件（兼容预约系统格式）\n\n");
+    
+    for (int day = start_day; day < start_day + num_days; day++) {
+        int daily_records = generate_daily_data(file, start_year, start_month, day);
         total_records += daily_records;
-
-        printf("已生成: %04d年%02d月%02d日 - %d条记录\n", start_year,
-               start_month, day, daily_records);
+        
+        printf("已生成: %04d年%02d月%02d日 - %d条记录\n", 
+               start_year, start_month, day, daily_records);
     }
-
+    
     fclose(file);
-
+    
     printf("\n=============================================\n");
     printf("数据生成完成！\n");
     printf("总天数: %d天\n", num_days);
-    printf("总记录数: %d条\n", total_records);
-    printf("保存到: 机房监控数据.csv\n");
+    printf("总占用记录数: %d条\n", total_records);
+    printf("保存到: computer_room_data.txt\n");
     printf("=============================================\n");
-
-    // 显示数据格式示例
-    printf("\n数据格式示例：\n");
-    printf("年,月,日,时间,姓名,性别,电话,机位,状态\n");
-    printf("2024,01,01,08:00,张伟,1,13812345678,15,1\n");
-    printf("2024,01,01,10:00,李娜,0,13987654321,32,1\n");
-
+    
     return 0;
 }

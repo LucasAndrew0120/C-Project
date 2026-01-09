@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <windows.h>
-#define MAX_DAYS 100   // 最大存储天数
-#define Time 6   // 6个时段：08:00-20:00，每2小时
-#define States 50 // 50个机位
+#define MAX_DAYS 100 // 最大存储天数
+#define Time 6       // 6个时段：08:00-20:00，每2小时
+#define States 50    // 50个机位
 // 客户信息结构体
 typedef struct cusinfo
 {
@@ -19,35 +19,41 @@ typedef struct mechine
     int month;
     int day;
     // 50个机位，每个机位6个时段的状态和预约信息
-    int state[States][Time];      // 状态：0空闲，1占用
+    int state[States][Time];      // 状态：0空闲，1占用，二维数组，将机位和时段绑定表示机位状态值
     cinfo waitlist[States][Time]; // 预约信息
 } device;
 device info[MAX_DAYS]; // 存储多天的数据
-int day_count = 0;     // 实际存储的天数
+int day_count = 0;     // 实际存储的天数，最后打印输出此次改变的天数
 // 获取时间段索引 (08:00=0, 10:00=1, 12:00=2, 14:00=3, 16:00=4, 18:00=5)
 int get_time_slot_index(int hour) { return (hour - 8) / 2; }
 // 获取时间段字符串
 char *get_time_slot_str(int slot)
 {
-    static char time_str[20];
+    static char time_str
+        [20]; // static保持数组的静态性，防止重复执行，有static，数组在内存中只有一份
     int start_hour = 8 + slot * 2;
-    sprintf(time_str, "%02d:00-%02d:00", start_hour, start_hour + 2);
-    return time_str;
+    sprintf(time_str, "%02d:00-%02d:00", start_hour,
+            start_hour + 2); // 格式化字符串
+    return time_str;         // 由于是static数组，返回后仍然有效
 }
 // 验证日期是否有效（月份1-12，日期1-30）
-int validate_date(int year, int month, int day) {
+int validate_date(int year, int month, int day)
+{
     // 检查月份
-    if (month < 1 || month > 12) {
+    if (month < 1 || month > 12)
+    {
         printf("月份无效！请输入1-12之间的数字。\n");
         return 0;
     }
     // 检查日期
-    if (day < 1 || day > 30) {
+    if (day < 1 || day > 30)
+    {
         printf("日期无效！请输入1-30之间的数字。\n");
         return 0;
     }
     // 检查年份（可选，可以根据需要设置范围）
-    if (year < 2000 || year > 2100) {
+    if (year < 2000 || year > 2100)
+    {
         printf("年份无效！请输入2000-2100之间的数字。\n");
         return 0;
     }
@@ -57,7 +63,8 @@ int validate_date(int year, int month, int day) {
 int find_or_create_date(int year, int month, int day)
 {
     // 首先验证日期
-    if (!validate_date(year, month, day)) {
+    if (!validate_date(year, month, day))
+    {
         printf("日期无效，无法创建新日期记录。\n");
         return -1;
     }
@@ -110,12 +117,16 @@ void search(device info[])
         int year, month, day;
         int valid_date = 0;
         // 循环直到输入有效日期
-        while (!valid_date) {
+        while (!valid_date)
+        {
             printf("请输入查询日期 (格式: year/month/day): ");
             scanf("%d/%d/%d", &year, &month, &day);
-            if (validate_date(year, month, day)) {
+            if (validate_date(year, month, day))
+            {
                 valid_date = 1;
-            } else {
+            }
+            else
+            {
                 printf("请重新输入日期。\n");
             }
         }
@@ -256,12 +267,16 @@ void buy(device info[])
     int valid_date = 0;
     printf("\n=== 机位预订 ===\n");
     // 循环直到输入有效日期
-    while (!valid_date) {
+    while (!valid_date)
+    {
         printf("请输入预订日期 (格式: year/month/day): ");
         scanf("%d/%d/%d", &year, &month, &day);
-        if (validate_date(year, month, day)) {
+        if (validate_date(year, month, day))
+        {
             valid_date = 1;
-        } else {
+        }
+        else
+        {
             printf("请重新输入日期。\n");
         }
     }
@@ -333,12 +348,16 @@ void exit_buy(device info[])
     printf("\n=== 取消预订 ===\n");
     printf("请输入预订信息:\n");
     // 循环直到输入有效日期
-    while (!valid_date) {
+    while (!valid_date)
+    {
         printf("日期 (格式: year/month/day): ");
         scanf("%d/%d/%d", &year, &month, &day);
-        if (validate_date(year, month, day)) {
+        if (validate_date(year, month, day))
+        {
             valid_date = 1;
-        } else {
+        }
+        else
+        {
             printf("请重新输入日期。\n");
         }
     }
